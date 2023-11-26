@@ -9,7 +9,15 @@ execute:
 
 - Download Julia (via juliaup)
 
-- Install Arrow.jl, DataFrames.jl, MixedModels.jl, and RCall.jl (and call `Pkg.build("RCall")`)
+- Install Arrow.jl, DataFrames.jl, GLM.jl, MixedModels.jl, and RCall.jl (and call `Pkg.build("RCall")`)
+
+## Files in the demo
+
+- `analysis.R`: R script transforms the raw data to data prepared for modelling.
+
+- `model.jl`: Julia script for fitting models to the cleaned data.
+
+- `notebook.qmd`: Quarto notebook combining the two (in Julia)
 
 ## Julia in RStudio
 

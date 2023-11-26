@@ -1,0 +1,174 @@
+---
+title: "PNC analysis and modelling"
+format: html
+editor: visual
+jupyter: julia-1.9
+---
+
+## Setup
+
+Julia:
+
+```{julia}
+#| warning: false
+#| message: false
+using GLM
+using MixedModels
+using Effects
+using DataFrames
+using RCall
+# For notebooks
+using ProgressMeter
+ProgressMeter.ijulia_behavior(:clear)
+```
+
+R:
+
+```{julia}
+#| warning: false
+#| message: false
+R"""
+suppressPackageStartupMessages(library(tidyverse))
+library(arm)
+""";
+```
+
+## Q0
+
+```{julia}
+#| message: false
+R"""
+ay <- read_csv("PNC_ay2.csv")
+ay <- ay %>% 
+  mutate(logdur.z2 = rescale(log(dur)),
+         birthyear.z2 = rescale(birthyear),
+         allophone.ay0 = rescale(allophone),
+         gender.male = rescale(gender),
+         frequency.z2 = rescale(Lg10CD),
+         vheight = -1*F1.n)
+ay$allophone <- as.integer(ay$allophone == 'ay0') - .5
+ay <- janitor::clean_names(ay)
+"""
+```
+
+## Q1
+
+```{julia}
+#| message: false
+R"""
+ay_late <- subset(ay, birthyear > 1980)
+ay_late_wds <- ay_late %>%
+  group_by(participant, allophone, word) %>%
+  summarize(vheight_mean = mean(vheight)) %>% 
+  ungroup()
+"""
+@rget ay_late_wds
+```
+
+## Q2
+
+```{julia}
+model1 = lm(@formula(vheight_mean ~ allophone), ay_late_wds)
+```
+
+## Q3
+
+```{julia}
+ay_late_wds_df = DataFrame(ay_late_wds);
+uq_allophone = unique(ay_late_wds_df.allophone);
+uq_participant = unique(ay_late_wds_df.participant);
+newdata = allcombinations(
+  DataFrame,
+  "allophone" => uq_allophone,
+  "participant" => uq_participant
+);
+effects!(newdata, model1)[!, Not(:err)]
+```
+
+## Q4
+
+```{julia}
+@rput ay_late_wds_df
+@rput newdata
+R"""
+library(ggplot2)
+ggplot(aes(x=allophone, y=vheight_mean), data=ay_late_wds_df) + 
+  geom_jitter(width=.3, height=0, alpha = .1) + 
+  geom_line(aes(group=participant), data=newdata) +
+  xlab("Condition") + 
+  ylab("Model prediction") + 
+  facet_wrap(~participant)
+"""
+```
+
+## Q5
+
+```{julia}
+model1a = fit(
+  MixedModel,
+  @formula(vheight_mean ~ allophone + (1 | participant)),
+  ay_late_wds
+)
+```
+
+## Q6
+
+```{julia}
+model1b = fit(
+  MixedModel,
+  @formula(vheight_mean ~ allophone + (1 + allophone | participant)),
+  ay_late_wds
+)
+```
+
+## Q7
+
+```{julia}
+MixedModels.likelihoodratiotest(model1a, model1b)
+```
+
+## Q8
+
+```{julia}
+@rget ay
+mod2 = lm(
+  @formula(vheight ~ gender_male * birthyear_z2 * allophone_ay0 +
+                     logdur_z2 + frequency_z2),
+  ay
+)
+```
+
+## Q9-12
+
+### Max model in R:
+
+```{julia}
+fm_R_max = @formula(
+  vheight ~ gender_male * birthyear_z2 * allophone_ay0 + 
+            logdur_z2 + frequency_z2 +
+            zerocorr(1 + logdur_z2 + frequency_z2 + allophone_ay0 | participant) + 
+            zerocorr(1 + birthyear_z2 | word)
+);
+@time model_R_max = fit(MixedModel, fm_R_max, ay)
+```
+
+### Max model in Julia (the theoretic maximal model):
+
+```{julia}
+fm_max = @formula(
+  vheight ~ gender_male * birthyear_z2 * allophone_ay0 + 
+            logdur_z2 + frequency_z2 +
+            (logdur_z2 + frequency_z2 + allophone_ay0 | participant) + 
+            (gender_male * birthyear_z2 + logdur_z2 | word)
+);
+@time model_max = fit(MixedModel, fm_max, ay)
+
+```
+
+```{julia}
+issingular(model_max)
+```
+
+```{julia}
+MixedModels.likelihoodratiotest(model_R_max, model_max)
+```
