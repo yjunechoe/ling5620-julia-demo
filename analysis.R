@@ -110,7 +110,7 @@ system.time({
                    frequency.z2 +
                    (allophone.ay0 + logdur.z2 + frequency.z2 || participant) + 
                    (birthyear.z2 || word), 
-                 data=ay, control = lmerControl(b))
+                 data=ay)
 })
 
 fm_R_max <- vheight ~ gender.male * birthyear.z2 * allophone.ay0 + 
@@ -119,4 +119,4 @@ fm_R_max <- vheight ~ gender.male * birthyear.z2 * allophone.ay0 +
   (allophone.ay0 + logdur.z2 + frequency.z2 || participant) + 
   (birthyear.z2 || word)
 
-lmer(fm_R_max, ay, REML = FALSE, control = lmerControl(calc.derivs = FALSE))
+x <- lmer(fm_R_max, ay, control = lmerControl(calc.derivs = FALSE))

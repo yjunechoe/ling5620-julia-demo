@@ -79,7 +79,7 @@ coeftable(mod2)
 
 # set decimal printing options for repl
 using Printf
-Base.show(io::IO, f::Float64) = @printf(io, "%.6f", f)
+Base.show(io::IO, f::Float64) = @printf(io, "%.3f", f)
 
 #9-12
 fm_R_max = @formula(
@@ -124,7 +124,7 @@ fm_max = @formula(
             (logdur_z2 + frequency_z2 + allophone_ay0 | participant) + 
             (gender_male * birthyear_z2 + logdur_z2 | word)
 );
-@time model_max = fit(MixedModel, fm_max, ay)
+@time model_max = fit(MixedModel, fm_max, ay; REML=true)
 issingular(model_max)
 MixedModels.likelihoodratiotest(model_R_max, model_max)
 MixedModels.rePCA(model_max)
